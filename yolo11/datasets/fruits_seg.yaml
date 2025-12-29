@@ -1,0 +1,9 @@
+path: datasets/fruits_seg
+train: images
+val: images
+test: 
+
+names:
+  0: apple
+  1: banana
+  2: orange

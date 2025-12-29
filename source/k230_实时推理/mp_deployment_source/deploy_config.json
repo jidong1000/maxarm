@@ -1,0 +1,57 @@
+{
+    "chip_type": "k230",
+    "inference_width": 320,
+    "inference_height": 320,
+    "confidence_threshold": 0.4,
+    "nms_threshold": 0.5,
+    "nncase_version": "2.9.0",
+    "model_type": "AnchorBaseDet",
+    "img_size": [
+        320,
+        320
+    ],
+    "anchors": [
+        [
+            23,
+            30,
+            40,
+            52,
+            47,
+            64
+        ],
+        [
+            57,
+            78,
+            71,
+            96,
+            85,
+            113
+        ],
+        [
+            104,
+            137,
+            133,
+            176,
+            162,
+            209
+        ]
+    ],
+    "mean": [
+        0.485,
+        0.456,
+        0.406
+    ],
+    "std": [
+        0.229,
+        0.224,
+        0.225
+    ],
+    "categories": [
+        "物块",
+        "硬币",
+        "充电头"
+    ],
+    "nms_option": false,
+    "kmodel_path": "best_AnchorBaseDet_can2_5_s_20251225234525.kmodel",
+    "num_classes": 3
+}

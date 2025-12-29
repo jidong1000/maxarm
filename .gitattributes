@@ -1,0 +1,13 @@
+# 自动检测文本文件并转换换行符
+* text=auto
+
+# 重要：以下文件必须保持 LF（Linux/macOS 格式）
+*.sh text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+Makefile text eol=lf
+
+# Windows 批处理文件保持 CRLF
+*.bat text eol=crlf
