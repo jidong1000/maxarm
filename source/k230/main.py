@@ -9,7 +9,7 @@ import os, sys, gc
 import ulab.numpy as np
 import image
 
-def connect_wifi(ssid="CMCC-Kq2S", password="EMXZ3796"):
+def connect_wifi(ssid="esp_ap", password="12345678"):
     """连接WiFi并返回IP地址"""
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
@@ -25,9 +25,10 @@ def main():
     print("K230 IP:", my_ip)
 
     # 2. 配置UDP
-    server_ip = '192.168.10.84'   # 改成你电脑IP
+    server_ip = '192.168.4.1'   # 改成esp32的IP
     server_port = 8080
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_socket.bind(('0.0.0.0', 0))
 
     # 3. 初始化YOLO（你的原始配置）
     kmodel_path = "/data/yolo11/best.kmodel"
@@ -76,9 +77,9 @@ def main():
                 pl.osd_img.draw_circle(cx, cy, 4, color=(255, 0, 0), fill=True)
 
                 # 打包并发送坐标
-                pkt = struct.pack('<2fB', float(cx), float(cy), 0xAA)
+                pkt = struct.pack('<2HB', int(cx), int(cy), 0xAA)
                 udp_socket.sendto(pkt, (server_ip, server_port))
-                print("successful!")
+#                print("successful!")
 
             pl.show_image()
             gc.collect()
