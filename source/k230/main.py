@@ -15,14 +15,27 @@ def connect_wifi(ssid="esp_ap", password="12345678"):
     wlan.active(True)
     wlan.connect(ssid, password)
 
-    while wlan.ifconfig()[0] == '0.0.0.0':
-        time.sleep_ms(50)
-    return wlan.ifconfig()[0]
+    if wlan.isconnected():
+        print("✓ WiFi连接成功!")
+        print("K230 IP配置:", wlan.ifconfig())
+        return wlan.ifconfig()[0]
+    else:
+        print("✗ WiFi连接失败!")
+        return None
 
 def main():
+    # ========== 第1处修改：强制清理残留socket ==========
+    for _ in range(3):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.close()
+            gc.collect()
+        except:
+            pass
+    # =====================================================
+
     # 1. 初始化网络
     my_ip = connect_wifi()
-    print("K230 IP:", my_ip)
 
     # 2. 配置UDP
     server_ip = '192.168.4.1'   # 改成esp32的IP
@@ -79,7 +92,6 @@ def main():
                 # 打包并发送坐标
                 pkt = struct.pack('<2HB', int(cx), int(cy), 0xAA)
                 udp_socket.sendto(pkt, (server_ip, server_port))
-#                print("successful!")
 
             pl.show_image()
             gc.collect()
@@ -88,6 +100,7 @@ def main():
         udp_socket.close()
         yolo.deinit()
         pl.destroy()
+        gc.collect()  # ← 第2处修改：添加这一行
 
 if __name__ == '__main__':
     main()

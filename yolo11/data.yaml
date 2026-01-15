@@ -1,8 +1,8 @@
-train: E:\datasets_images\arm\res\images\train  # train images (relative to 'path') 4 images
-val: E:\datasets_images\arm\res\images\val  # val images (relative to 'path') 4 images
+train: E:\datasets_images\arm_v2\res\images\train  # train images (relative to 'path') 4 images
+val: E:\datasets_images\arm_v2\res\images\val  # val images (relative to 'path') 4 images
 
 # pay attention to modify
 nc: 3
 
 # class names
-names: ['stuff','coin','charge']
+names: ['stuff','valve','battery']

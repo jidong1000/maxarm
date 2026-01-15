@@ -8,13 +8,13 @@ import image
 if __name__=="__main__":
 
     kmodel_path = "/data/yolo11/best.kmodel"
-    labels = ["stuff","coin","charge"]
+    labels = ["stuff","valve","battery"]
     model_input_size = [320,320]
 
     display_mode = "lcd"
     rgb888p_size = [640,360]
-    confidence_threshold = 0.6
-    nms_threshold = 0.3
+    confidence_threshold = 0.4
+    nms_threshold = 0.45
 
     pl = PipeLine(rgb888p_size=rgb888p_size,display_mode=display_mode)
     pl.create()
@@ -32,8 +32,8 @@ if __name__=="__main__":
         img = pl.get_frame()
         res = yolo.run(img)
 
-#            filter i dont need, r[5] is class_id
-        res = [r for r in res if r[5] == 1]
+##            filter i dont need, r[5] is class_id
+#        res = [r for r in res if r[5] == 1]
 
         yolo.draw_result(res,pl.osd_img)
 
