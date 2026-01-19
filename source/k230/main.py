@@ -45,12 +45,12 @@ def main():
 
     # 3. 初始化YOLO（你的原始配置）
     kmodel_path = "/data/yolo11/best.kmodel"
-    labels = ["stuff", "coin", "charge"]
+    labels = ["stuff","valve","battery"]
     model_input_size = [320, 320]
     display_mode = "lcd"
     rgb888p_size = [640, 360]
     confidence_threshold = 0.6
-    nms_threshold = 0.3
+    nms_threshold = 0.45
 
     pl = PipeLine(rgb888p_size=rgb888p_size, display_mode=display_mode)
     pl.create()
@@ -75,8 +75,8 @@ def main():
             img = pl.get_frame()
             res = yolo.run(img)
 
-            # 过滤，只保留 coin (class_id == 1)
-            res = [r for r in res if r[5] == 1]
+#            # 过滤，只保留 coin (class_id == 1)
+#            res = [r for r in res if r[5] == 0]
 
             yolo.draw_result(res, pl.osd_img)
 

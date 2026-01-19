@@ -32,7 +32,7 @@ if __name__=="__main__":
         img = pl.get_frame()
         res = yolo.run(img)
 
-##            filter i dont need, r[5] is class_id
+#            filter i dont need, r[5] is class_id
 #        res = [r for r in res if r[5] == 1]
 
         yolo.draw_result(res,pl.osd_img)
