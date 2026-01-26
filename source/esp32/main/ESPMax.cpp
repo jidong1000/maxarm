@@ -9,7 +9,7 @@
 HardwareSerial HardwareSerial(2);
 LobotSerialServoControl BusServo(HardwareSerial,receiveEnablePin,transmitEnablePin);
 
-float ORIGIN[3] ={ 0, -(L1 + L3 + L4), (L0 + L2)};
+float ORIGIN[3] = { 0, -(L1 + L3 + L4), (L0 + L2)};
 float positions[3];
 
 void ESPMax_init(){
@@ -82,6 +82,20 @@ int set_position_relatively(float values[3], int duration){
 
 void go_home(int duration){
     set_position(ORIGIN, duration);
+}
+
+//duration必须大于1000
+void status_ready(int duration)
+{
+    float pos[3];
+    pos[0] = ORIGIN[0];
+    pos[1] = ORIGIN[1];
+    pos[2] = ORIGIN[2] - 50;
+    
+    go_home(1000);
+    delay(1000);
+    set_position(pos, duration - 1000);
+    delay(duration - 1000);
 }
 
 void teaching_mode(){

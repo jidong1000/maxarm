@@ -59,6 +59,16 @@ UdpData UdpReceiver::receive()
     return data;
 }
 
+//清空udp接收区缓存
+void UdpReceiver::flush()
+{
+    while (_udp.parsePacket())
+    {
+        _udp.read(_packetBuffer, sizeof(_packetBuffer));
+    }
+}
+
+
 // 获取本地IP地址
 IPAddress UdpReceiver::getLocalIP() 
 {

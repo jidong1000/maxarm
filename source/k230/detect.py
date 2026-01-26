@@ -5,6 +5,7 @@ import os,sys,gc
 import ulab.numpy as np
 import image
 
+#main函数
 if __name__=="__main__":
 
     kmodel_path = "/data/yolo11/best.kmodel"
@@ -13,8 +14,8 @@ if __name__=="__main__":
 
     display_mode = "lcd"
     rgb888p_size = [640,360]
-    confidence_threshold = 0.4
-    nms_threshold = 0.45
+    confidence_threshold = 0.6
+    nms_threshold = 0.3
 
     pl = PipeLine(rgb888p_size=rgb888p_size,display_mode=display_mode)
     pl.create()
@@ -39,8 +40,10 @@ if __name__=="__main__":
 
         for b in res:
             x1, y1, x2, y2 = b[0:4]
+
             cx = int((x1 + x2) / 2 * scale_x)
             cy = int((y1 + y2) / 2 * scale_y)
+
             print(cx, cy)
 
             pl.osd_img.draw_circle(cx, cy, 4, color=(255, 0, 0), fill=True)

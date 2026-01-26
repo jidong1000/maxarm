@@ -12,23 +12,25 @@ struct UdpData {
 };
 
 class UdpReceiver {
-private:
-    const char* _ssid;
-    const char* _password;
-    unsigned int _localPort;
-    WiFiUDP _udp;
-    uint8_t _packetBuffer[64];
-
-public:
-    UdpReceiver(const char* ssid, const char* password, unsigned int port = 8080);
-    
-    void stop();
-     
-    bool begin();
-    
-    UdpData receive();
-    
-    IPAddress getLocalIP();
+  private:
+      const char* _ssid;
+      const char* _password;
+      unsigned int _localPort;
+      WiFiUDP _udp;
+      uint8_t _packetBuffer[64];
+  
+  public:
+      UdpReceiver(const char* ssid, const char* password, unsigned int port = 8080);
+      
+      void stop();
+       
+      bool begin();
+      
+      UdpData receive();
+  
+      void flush();
+      
+      IPAddress getLocalIP();
 };
 
 #endif

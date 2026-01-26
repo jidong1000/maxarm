@@ -50,7 +50,7 @@ def main():
     display_mode = "lcd"
     rgb888p_size = [640, 360]
     confidence_threshold = 0.6
-    nms_threshold = 0.45
+    nms_threshold = 0.3
 
     pl = PipeLine(rgb888p_size=rgb888p_size, display_mode=display_mode)
     pl.create()
@@ -75,14 +75,14 @@ def main():
             img = pl.get_frame()
             res = yolo.run(img)
 
-#            # 过滤，只保留 coin (class_id == 1)
-#            res = [r for r in res if r[5] == 0]
+            res = [r for r in res if r[5] == 1]
 
             yolo.draw_result(res, pl.osd_img)
 
             # 发送所有检测结果
             for b in res:
                 x1, y1, x2, y2 = b[0:4]
+                class_ID = int(b[5])
                 cx = int((x1 + x2) / 2 * scale_x)
                 cy = int((y1 + y2) / 2 * scale_y)
 
@@ -90,7 +90,7 @@ def main():
                 pl.osd_img.draw_circle(cx, cy, 4, color=(255, 0, 0), fill=True)
 
                 # 打包并发送坐标
-                pkt = struct.pack('<2HB', int(cx), int(cy), 0xAA)
+                pkt = struct.pack('<2HB', int(cx), int(cy), class_ID)
                 udp_socket.sendto(pkt, (server_ip, server_port))
 
             pl.show_image()
@@ -100,7 +100,7 @@ def main():
         udp_socket.close()
         yolo.deinit()
         pl.destroy()
-        gc.collect()  # ← 第2处修改：添加这一行
+        gc.collect()
 
 if __name__ == '__main__':
     main()
