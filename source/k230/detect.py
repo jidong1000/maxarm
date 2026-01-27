@@ -21,7 +21,7 @@ if __name__=="__main__":
     pl.create()
     display_size = pl.get_display_size()
 
-    yolo = YOLO11(task_type="detect",mode="video",kmodel_path=kmodel_path,labels=labels,rgb888p_size=rgb888p_size,model_input_size=model_input_size,display_size=display_size,conf_thresh=confidence_threshold,nms_thresh=nms_threshold,max_boxes_num=50,debug_mode=0)
+    yolo = YOLO11(task_type="detect",mode="video",kmodel_path=kmodel_path,labels=labels,rgb888p_size=rgb888p_size,model_input_size=model_input_size,display_size=display_size,conf_thresh=confidence_threshold,nms_thresh=nms_threshold,max_boxes_num=2,debug_mode=0)
     yolo.config_preprocess()
 
 #    映射坐标
@@ -33,8 +33,23 @@ if __name__=="__main__":
         img = pl.get_frame()
         res = yolo.run(img)
 
-#            filter i dont need, r[5] is class_id
-#        res = [r for r in res if r[5] == 1]
+#        filter i dont need, r[5] is class_id
+        filtered = []
+        res = [r for r in res if r[5] == 1]
+
+        class0 = [r for r in res if r[5] == 0]
+        others = [r for r in res if r[5] != 0]
+
+        # 只对 class_id == 0 做筛选
+        if class0:
+            best0 = max(class0, key=lambda r: (r[1] + r[3]) / 2)
+            filtered.append(best0)
+
+        # 其他类别本来就只有一个，直接加
+        filtered.extend(others)
+
+        res = filtered
+
 
         yolo.draw_result(res,pl.osd_img)
 

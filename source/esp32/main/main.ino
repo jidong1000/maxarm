@@ -7,17 +7,25 @@
 #include "udp.h"
 #include "_espmax.h"
 
-#define LED_BUILTIN               2                     //定义LED控制引脚
-#define INITIAL_HEIGHT            L0 + L2 - 50          //定义起始 z坐标
-#define RISE_HEIGHT               INITIAL_HEIGHT - 20   //定义拿起后上升高度
-#define VALVE_HEIGHT              105                   //定义valve的下降高度
-#define END_POSITION_Y_DIS        150                   //定义放置区 y坐标
-#define END_POSITION_VALVE_X_DIS  150                   //定义放置区valve x坐标
+#define LED_BUILTIN                 2                     //定义LED控制引脚
+#define INITIAL_HEIGHT              L0 + L2 - 50          //定义起始 z坐标
+#define RISE_HEIGHT                 INITIAL_HEIGHT - 20   //定义拿起后上升高度
+
+#define VALVE_HEIGHT                105                   //定义valve的下降高度
+#define END_POSITION_VALVE_Y_DIS    150                   //定义放置区valve y坐标距离
+#define END_POSITION_VALVE_X_DIS    150                   //定义放置区valve x坐标距离
+
+#define STUFF_HEIGHT                85                    //定义valve的下降高度
+#define END_POSITION_STUFF1_Y_DIS   80                    //定义放置区stuff1 y坐标距离
+#define END_POSITION_STUFF1_X_DIS   150                   //定义放置区stuff1 x坐标距离
+#define END_POSITION_STUFF2_Y_DIS   80                    //定义放置区stuff2 y坐标距离
+#define END_POSITION_STUFF2_X_DIS   220                   //定义放置区stuff2 x坐标距离
+
 
 // PID控制器
-float Kp = 0.045;
+float Kp = 0.06;
 float Ki = 0;
-float Kd = 0.02;
+float Kd = 0.005;
 arc::PID<double> x_pid(Kp, Ki, Kd);  
 arc::PID<double> y_pid(Kp, Ki, Kd);
 
@@ -28,9 +36,13 @@ UdpReceiver udpReceiver("esp_ap", "12345678", 8080);
 float p1 = 0, p2 = 0, p3 = 0;
 float current_pos[3] = {0, -(L1 + L3 + L4), INITIAL_HEIGHT};
 int stable_count = 0;
-int target_x = 320, target_y = 405;
+int target_x = 320, target_y = 415;
 bool flag_target_locked = false; //判断是否xy调整完成
 bool flag_z = false;  //防止多次进入z轴任务
+bool flag_stuff = false;  //标志第几个stuff
+uint8_t screenFlag = 0;
+bool screenFlagUpdated = false;
+
 
 void setup() {
   // 初始化硬件
@@ -41,6 +53,13 @@ void setup() {
   
   // 初始化通信
   Serial.begin(115200);
+  Serial2.begin(
+        115200,               
+        SERIAL_8N1,          // 8N1
+        32,                 // RX 引脚
+        33                  // TX 引脚
+    );
+    
   udpReceiver.begin();
 
   // 初始化引脚LED_BUILTIN输出模式
@@ -55,9 +74,16 @@ void loop() {
   // ===== 处理UDP数据 =====
   UdpData data = udpReceiver.receive();
 
+  handleSerialScreen();
+
+  if(screenFlagUpdated)
+  {
+      screenFlagUpdated = false;
+      udpReceiver.sendFlag(screenFlag);        
+  }
+  
   if (data.isValid && (!flag_target_locked))   
   { 
-    Serial.printf("%d %d\r\n", data.cx, data.cy);
     int color_x = data.cx;
     int color_y = data.cy;
     
@@ -111,7 +137,7 @@ void loop() {
     float error_x = target_x - color_x;
     float error_y = target_y - color_y;
 
-    if (fabs(error_x) < 10 && fabs(error_y) < 10) 
+    if (fabs(error_x) < 5 && fabs(error_y) < 5) 
     {
       if (++stable_count > 10) 
       { 
@@ -119,6 +145,7 @@ void loop() {
         setBuzzer(100);  // 到位提示音
         flag_target_locked = 1;
         Serial.println("目标锁定！");
+        Serial.printf("%d %d %d\r\n", data.cx, data.cy, data.flag);
       }
     } 
     else 
@@ -126,22 +153,40 @@ void loop() {
       stable_count = 0;  // 重置计数器
     }
   }
-  else if(flag_target_locked)
+  //必须是if 不能是else if
+  if(flag_target_locked)
   {
     // 打开LED
     digitalWrite(LED_BUILTIN, HIGH); 
-
+    Serial.printf("%d %d %d\r\n", data.cx, data.cy, data.flag);
     if(!flag_z)
     {
+      flag_z = true;
+      
       //判断下降距离
       float end_pos[3];
       switch(data.flag)
       {
+        case 0:
+          current_pos[2] -= STUFF_HEIGHT;
+          if(!flag_stuff)
+          {
+            Serial.println("ok");
+            end_pos[0] = ORIGIN[0] + END_POSITION_STUFF1_X_DIS;
+            end_pos[1] = ORIGIN[1] + END_POSITION_STUFF1_Y_DIS;  
+          }
+          else
+          {
+            Serial.println("nok");
+            end_pos[0] = ORIGIN[0] + END_POSITION_STUFF2_X_DIS;
+            end_pos[1] = ORIGIN[1] + END_POSITION_STUFF2_Y_DIS;       
+          } 
+          flag_stuff = !flag_stuff;
+          break;
         case 1:   
-          flag_z = 1;
           current_pos[2] -= VALVE_HEIGHT;
           end_pos[0] = ORIGIN[0] + END_POSITION_VALVE_X_DIS;
-          end_pos[1] = ORIGIN[1] + END_POSITION_Y_DIS;
+          end_pos[1] = ORIGIN[1] + END_POSITION_VALVE_Y_DIS;
           break;
       }
       
@@ -164,20 +209,60 @@ void loop() {
       delay(2000);
 
       //放下并放气
-      current_pos[0] = end_pos[0]; current_pos[1] = end_pos[1]; current_pos[2] = INITIAL_HEIGHT - VALVE_HEIGHT + 10;
+      current_pos[0] = end_pos[0]; current_pos[1] = end_pos[1]; 
+      switch(data.flag)
+      {
+        case 0: current_pos[2] = INITIAL_HEIGHT - STUFF_HEIGHT + 10;break;
+        case 1: current_pos[2] = INITIAL_HEIGHT - VALVE_HEIGHT + 10;break;
+      }
+      
       set_position(current_pos, 2000);
       delay(2000);
       Pump_off();
 
       //重置目标检测开关
-      flag_target_locked = false;   
+      flag_target_locked = false;  
+      flag_z = false;
+       
+      // 关闭LED并复位机械臂                    
+      status_ready(1500);   
+      delay(1500);
+      current_pos[0] = 0; current_pos[1] = -(L1 + L3 + L4); current_pos[2] = INITIAL_HEIGHT;   
+      udpReceiver.flush();  //重要，清空udp缓存                    
     }
-    
-    // 关闭LED并复位机械臂                 
-    digitalWrite(LED_BUILTIN, LOW); 
-    status_ready(1500);   
-    delay(1500);
-    current_pos[0] = 0; current_pos[1] = -(L1 + L3 + L4); current_pos[2] = INITIAL_HEIGHT;   
-    udpReceiver.flush();  //重要，清空udp缓存                    
+    digitalWrite(LED_BUILTIN, LOW);
   }
+}
+
+void handleSerialScreen()
+{
+    static uint8_t state = 0;   // 0=等包头, 1=等数据, 2=等包尾
+    static uint8_t data_flag = 0;
+    
+    while (Serial2.available())
+    {
+        uint8_t b = Serial2.read();
+        
+        switch (state)
+        {
+          case 0: // 等包头
+              if (b == 0x2C)
+                  state = 1; 
+              break;
+  
+          case 1: // 收数据
+              data_flag = b;
+              state = 2;
+              break;
+  
+          case 2: // 等包尾
+              if (b == 0x5B)
+              {
+                  screenFlag = data_flag;
+                  screenFlagUpdated = true; 
+              }
+              state = 0; // 不管对不对，都回到等包头
+              break;
+        }
+    }
 }
