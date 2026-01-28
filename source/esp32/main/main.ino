@@ -11,7 +11,7 @@
 #define INITIAL_HEIGHT              L0 + L2 - 50          //定义起始 z坐标
 #define RISE_HEIGHT                 INITIAL_HEIGHT - 20   //定义拿起后上升高度
 
-#define VALVE_HEIGHT                105                   //定义valve的下降高度
+#define VALVE_HEIGHT                110                   //定义valve的下降高度
 #define END_POSITION_VALVE_Y_DIS    150                   //定义放置区valve y坐标距离
 #define END_POSITION_VALVE_X_DIS    150                   //定义放置区valve x坐标距离
 
@@ -21,11 +21,15 @@
 #define END_POSITION_STUFF2_Y_DIS   80                    //定义放置区stuff2 y坐标距离
 #define END_POSITION_STUFF2_X_DIS   220                   //定义放置区stuff2 x坐标距离
 
+#define BATTERY_HEIGHT                115                   //定义valve的下降高度
+#define END_POSITION_BATTERY_Y_DIS    150                   //定义放置区valve y坐标距离
+#define END_POSITION_BATTERY_X_DIS    220                   //定义放置区valve x坐标距离
+
 
 // PID控制器
-float Kp = 0.06;
-float Ki = 0;
-float Kd = 0.005;
+float Kp = 0.1;
+float Ki = 0.001;
+float Kd = 0.001;
 arc::PID<double> x_pid(Kp, Ki, Kd);  
 arc::PID<double> y_pid(Kp, Ki, Kd);
 
@@ -86,6 +90,8 @@ void loop() {
   { 
     int color_x = data.cx;
     int color_y = data.cy;
+
+    Serial.printf("%d %d %d\r\n", data.cx, data.cy, data.flag);
     
     float dis_x, dis_y;
 
@@ -137,7 +143,7 @@ void loop() {
     float error_x = target_x - color_x;
     float error_y = target_y - color_y;
 
-    if (fabs(error_x) < 5 && fabs(error_y) < 5) 
+    if (fabs(error_x) < 10 && fabs(error_y) < 10) 
     {
       if (++stable_count > 10) 
       { 
@@ -145,7 +151,6 @@ void loop() {
         setBuzzer(100);  // 到位提示音
         flag_target_locked = 1;
         Serial.println("目标锁定！");
-        Serial.printf("%d %d %d\r\n", data.cx, data.cy, data.flag);
       }
     } 
     else 
@@ -158,7 +163,6 @@ void loop() {
   {
     // 打开LED
     digitalWrite(LED_BUILTIN, HIGH); 
-    Serial.printf("%d %d %d\r\n", data.cx, data.cy, data.flag);
     if(!flag_z)
     {
       flag_z = true;
@@ -171,13 +175,11 @@ void loop() {
           current_pos[2] -= STUFF_HEIGHT;
           if(!flag_stuff)
           {
-            Serial.println("ok");
             end_pos[0] = ORIGIN[0] + END_POSITION_STUFF1_X_DIS;
             end_pos[1] = ORIGIN[1] + END_POSITION_STUFF1_Y_DIS;  
           }
           else
           {
-            Serial.println("nok");
             end_pos[0] = ORIGIN[0] + END_POSITION_STUFF2_X_DIS;
             end_pos[1] = ORIGIN[1] + END_POSITION_STUFF2_Y_DIS;       
           } 
@@ -188,6 +190,11 @@ void loop() {
           end_pos[0] = ORIGIN[0] + END_POSITION_VALVE_X_DIS;
           end_pos[1] = ORIGIN[1] + END_POSITION_VALVE_Y_DIS;
           break;
+        case 2:   
+          current_pos[2] -= BATTERY_HEIGHT;
+          end_pos[0] = ORIGIN[0] + END_POSITION_BATTERY_X_DIS;
+          end_pos[1] = ORIGIN[1] + END_POSITION_BATTERY_Y_DIS;
+          break;
       }
       
       //执行下降
@@ -196,7 +203,7 @@ void loop() {
       
       delay(500);  //缓冲，让吸盘和物体充分接触 
       Pump_on();
-      delay(1000);  //给气泵足够多的时间去吸
+      delay(1500);  //给气泵足够多的时间去吸
 
       //上升到固定坐标
       current_pos[2] = RISE_HEIGHT; 
@@ -214,12 +221,13 @@ void loop() {
       {
         case 0: current_pos[2] = INITIAL_HEIGHT - STUFF_HEIGHT + 10;break;
         case 1: current_pos[2] = INITIAL_HEIGHT - VALVE_HEIGHT + 10;break;
+        case 2: current_pos[2] = INITIAL_HEIGHT - BATTERY_HEIGHT + 10;break;
       }
       
       set_position(current_pos, 2000);
       delay(2000);
       Pump_off();
-
+      delay(1000);
       //重置目标检测开关
       flag_target_locked = false;  
       flag_z = false;
