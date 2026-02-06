@@ -14,15 +14,15 @@ def connect_wifi(ssid="esp_ap", password="12345678"):
     wlan = network.WLAN(network.STA_IF)
     wlan.connect(ssid, password)
 
-    for _ in range(50):
+    while True:
         if wlan.isconnected():
             ip = wlan.ifconfig()[0]
             print("✓ WiFi连接成功:", ip)
             return ip
         time.sleep(0.1)
 
-    print("✗ WiFi连接失败")
-    return None
+    print("✗ WiFi连接失败，retrying...")
+    time.sleep(0.1)
 
 
 def send_localIP(sock, esp_ip, esp_port, retry=20):

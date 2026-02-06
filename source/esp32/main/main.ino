@@ -7,29 +7,29 @@
 #include "udp.h"
 #include "_espmax.h"
 
-#define LED_BUILTIN                 2                     //定义LED控制引脚
-#define INITIAL_HEIGHT              L0 + L2 - 50          //定义起始 z坐标
-#define RISE_HEIGHT                 INITIAL_HEIGHT - 20   //定义拿起后上升高度
+#define LED_BUILTIN                   2                     //定义LED控制引脚
+#define INITIAL_HEIGHT                L0 + L2 - 50          //定义起始 z坐标
+#define RISE_HEIGHT                   INITIAL_HEIGHT - 20   //定义拿起后上升高度
 
-#define VALVE_HEIGHT                110                   //定义valve的下降高度
-#define END_POSITION_VALVE_Y_DIS    150                   //定义放置区valve y坐标距离
-#define END_POSITION_VALVE_X_DIS    150                   //定义放置区valve x坐标距离
+#define VALVE_HEIGHT                  109                   //定义valve的下降高度
+#define END_POSITION_VALVE_Y_DIS      150                   //定义放置区valve y坐标距离
+#define END_POSITION_VALVE_X_DIS      150                   //定义放置区valve x坐标距离
 
-#define STUFF_HEIGHT                85                    //定义valve的下降高度
-#define END_POSITION_STUFF1_Y_DIS   80                    //定义放置区stuff1 y坐标距离
-#define END_POSITION_STUFF1_X_DIS   150                   //定义放置区stuff1 x坐标距离
-#define END_POSITION_STUFF2_Y_DIS   80                    //定义放置区stuff2 y坐标距离
-#define END_POSITION_STUFF2_X_DIS   220                   //定义放置区stuff2 x坐标距离
+#define STUFF_HEIGHT                  83                    //定义valve的下降高度
+#define END_POSITION_STUFF1_Y_DIS     80                    //定义放置区stuff1 y坐标距离
+#define END_POSITION_STUFF1_X_DIS     150                   //定义放置区stuff1 x坐标距离
+#define END_POSITION_STUFF2_Y_DIS     80                    //定义放置区stuff2 y坐标距离
+#define END_POSITION_STUFF2_X_DIS     220                   //定义放置区stuff2 x坐标距离
 
-#define BATTERY_HEIGHT                115                   //定义valve的下降高度
+#define BATTERY_HEIGHT                111                   //定义valve的下降高度
 #define END_POSITION_BATTERY_Y_DIS    150                   //定义放置区valve y坐标距离
 #define END_POSITION_BATTERY_X_DIS    220                   //定义放置区valve x坐标距离
 
 
 // PID控制器
-float Kp = 0.1;
-float Ki = 0.001;
-float Kd = 0.001;
+float Kp = 0.11;
+float Ki = 0;
+float Kd = 0.0001;
 arc::PID<double> x_pid(Kp, Ki, Kd);  
 arc::PID<double> y_pid(Kp, Ki, Kd);
 
@@ -40,7 +40,7 @@ UdpReceiver udpReceiver("esp_ap", "12345678", 8080);
 float p1 = 0, p2 = 0, p3 = 0;
 float current_pos[3] = {0, -(L1 + L3 + L4), INITIAL_HEIGHT};
 int stable_count = 0;
-int target_x = 320, target_y = 415;
+int target_x = 320, target_y = 417;
 bool flag_target_locked = false; //判断是否xy调整完成
 bool flag_z = false;  //防止多次进入z轴任务
 bool flag_stuff = false;  //标志第几个stuff
@@ -57,13 +57,8 @@ void setup() {
   
   // 初始化通信
   Serial.begin(115200);
-  Serial2.begin(
-        115200,               
-        SERIAL_8N1,          // 8N1
-        32,                 // RX 引脚
-        33                  // TX 引脚
-    );
-    
+  Serial1.begin(115200, SERIAL_8N1, 32, 33);
+
   udpReceiver.begin();
 
   // 初始化引脚LED_BUILTIN输出模式
@@ -90,7 +85,8 @@ void loop() {
   { 
     int color_x = data.cx;
     int color_y = data.cy;
-
+    
+    Serial1.printf("page0.t2.txt=\"looking for target\"\xff\xff\xff");
     Serial.printf("%d %d %d\r\n", data.cx, data.cy, data.flag);
     
     float dis_x, dis_y;
@@ -143,14 +139,14 @@ void loop() {
     float error_x = target_x - color_x;
     float error_y = target_y - color_y;
 
-    if (fabs(error_x) < 10 && fabs(error_y) < 10) 
+    if (fabs(error_x) < 5 && fabs(error_y) < 5) 
     {
-      if (++stable_count > 10) 
+      if (++stable_count > 5) 
       { 
         stable_count = 0;
         setBuzzer(100);  // 到位提示音
         flag_target_locked = 1;
-        Serial.println("目标锁定！");
+        Serial1.printf("page0.t2.txt=\"placing\"\xff\xff\xff");
       }
     } 
     else 
@@ -219,9 +215,9 @@ void loop() {
       current_pos[0] = end_pos[0]; current_pos[1] = end_pos[1]; 
       switch(data.flag)
       {
-        case 0: current_pos[2] = INITIAL_HEIGHT - STUFF_HEIGHT + 10;break;
-        case 1: current_pos[2] = INITIAL_HEIGHT - VALVE_HEIGHT + 10;break;
-        case 2: current_pos[2] = INITIAL_HEIGHT - BATTERY_HEIGHT + 10;break;
+        case 0: current_pos[2] = INITIAL_HEIGHT - STUFF_HEIGHT + 5;break;
+        case 1: current_pos[2] = INITIAL_HEIGHT - VALVE_HEIGHT + 5;break;
+        case 2: current_pos[2] = INITIAL_HEIGHT - BATTERY_HEIGHT + 5;break;
       }
       
       set_position(current_pos, 2000);
@@ -231,12 +227,17 @@ void loop() {
       //重置目标检测开关
       flag_target_locked = false;  
       flag_z = false;
+      Serial1.printf("page0.t2.txt=\"finish\"\xff\xff\xff");
        
-      // 关闭LED并复位机械臂                    
+      // 关闭LED并复位机械臂  
+      current_pos[2] = INITIAL_HEIGHT;
+      set_position(current_pos, 500);  //防止撞到放好的物体
+      delay(500);                 
       status_ready(1500);   
       delay(1500);
-      current_pos[0] = 0; current_pos[1] = -(L1 + L3 + L4); current_pos[2] = INITIAL_HEIGHT;   
-      udpReceiver.flush();  //重要，清空udp缓存                    
+      current_pos[0] = 0; current_pos[1] = -(L1 + L3 + L4);   
+      udpReceiver.flush();  //重要，清空udp缓存 
+      Serial1.printf("page0.t2.txt=\"\"\xff\xff\xff");                   
     }
     digitalWrite(LED_BUILTIN, LOW);
   }
@@ -247,9 +248,9 @@ void handleSerialScreen()
     static uint8_t state = 0;   // 0=等包头, 1=等数据, 2=等包尾
     static uint8_t data_flag = 0;
     
-    while (Serial2.available())
+    while (Serial1.available())
     {
-        uint8_t b = Serial2.read();
+        uint8_t b = Serial1.read();
         
         switch (state)
         {
@@ -267,7 +268,8 @@ void handleSerialScreen()
               if (b == 0x5B)
               {
                   screenFlag = data_flag;
-                  screenFlagUpdated = true; 
+                  screenFlagUpdated = true;
+                  digitalWrite(LED_BUILTIN, HIGH); 
               }
               state = 0; // 不管对不对，都回到等包头
               break;
